@@ -1,0 +1,14 @@
+.git
+.gitignore
+.vscode
+.idea
+.env
+.env.*
+**/*.log
+**/*.tmp
+**/*.swp
+**/*.test
+bin
+dist
+tmp
+coverage.out
