@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -38,10 +39,14 @@ func NewClient(config Config) (*Client, error) {
 	if config.DialTimeout <= 0 {
 		config.DialTimeout = 5 * time.Second
 	}
+	addr, password, db, err := normalizeRedisAddress(config.Addr, config.Password, config.DB)
+	if err != nil {
+		return nil, err
+	}
 	client := &Client{
-		addr:        config.Addr,
-		password:    config.Password,
-		db:          config.DB,
+		addr:        addr,
+		password:    password,
+		db:          db,
 		dialTimeout: config.DialTimeout,
 	}
 	if err := client.ping(context.Background()); err != nil {
@@ -250,4 +255,49 @@ func (c *Client) setDeadline(ctx context.Context) error {
 		return c.conn.SetDeadline(deadline)
 	}
 	return c.conn.SetDeadline(time.Now().Add(c.dialTimeout))
+}
+
+func normalizeRedisAddress(rawAddr, fallbackPassword string, fallbackDB int) (string, string, int, error) {
+	rawAddr = strings.TrimSpace(rawAddr)
+	password := strings.TrimSpace(fallbackPassword)
+	db := fallbackDB
+
+	if !strings.Contains(rawAddr, "://") {
+		return rawAddr, password, db, nil
+	}
+
+	parsed, err := url.Parse(rawAddr)
+	if err != nil {
+		return "", "", 0, fmt.Errorf("parse redis url: %w", err)
+	}
+	if parsed.Scheme != "redis" {
+		return "", "", 0, fmt.Errorf("unsupported redis url scheme %q", parsed.Scheme)
+	}
+	if parsed.Host == "" {
+		return "", "", 0, errors.New("redis url host is required")
+	}
+
+	if parsed.User != nil {
+		if value, ok := parsed.User.Password(); ok && value != "" {
+			password = value
+		}
+	}
+
+	if parsed.Path != "" && parsed.Path != "/" {
+		parsedDB, parseErr := strconv.Atoi(strings.TrimPrefix(parsed.Path, "/"))
+		if parseErr != nil {
+			return "", "", 0, fmt.Errorf("parse redis db from url: %w", parseErr)
+		}
+		db = parsedDB
+	}
+
+	if queryDB := parsed.Query().Get("db"); queryDB != "" {
+		parsedDB, parseErr := strconv.Atoi(queryDB)
+		if parseErr != nil {
+			return "", "", 0, fmt.Errorf("parse redis db query parameter: %w", parseErr)
+		}
+		db = parsedDB
+	}
+
+	return parsed.Host, password, db, nil
 }
