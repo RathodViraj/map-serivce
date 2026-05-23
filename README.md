@@ -13,7 +13,7 @@ The application is organized as a single Go module named `mapservice`.
 - `db/redis.go` provides a lightweight Redis client used for caching.
 - `frontend/` contains the static Leaflet UI that calls `GET /nearby`.
 
-### Plain Text Diagram
+### Current Flow
 
 ```
 Browser / Leaflet Frontend
@@ -30,10 +30,10 @@ Browser / Leaflet Frontend
 		     |
 		     v
 	     service.go
-	   /     |        \
-	  /      |         \
-	 v       v          v
-  Redis Cache  Validation  Overpass API
+	   /       |      \
+	  /        |       \
+	 v         v        v
+   Cache  Validation  Overpass API
 	 |                     |
 	 +---------<-----------+
 		     |
@@ -131,7 +131,7 @@ Returned places include:
 The repository includes a production Docker setup:
 
 - `app.dockerfile` uses a multi-stage build.
-- The final image is based on a minimal distroless runtime.
+- The final image is a small Alpine runtime.
 - The static frontend is copied into the runtime image.
 - `docker-compose.yml` runs the backend and Redis on a dedicated bridge network.
 - Healthchecks and restart policies are configured for production-style deployment.
@@ -156,6 +156,8 @@ The application reads configuration from environment variables. Common settings 
 - `CORS_ORIGIN`
 
 `cmd/main.go` also loads `.env` from the workspace root or parent directory for local development.
+
+`REDIS_ADDR` can be a plain host like `localhost:6379` or a full Redis URL.
 
 ## Development Notes
 
