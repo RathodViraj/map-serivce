@@ -1,4 +1,4 @@
-# Map Service [render](https://nearby-finder.onrender.com/)
+# Map Service [Live](https://nearby-finder.onrender.com/)
 
 A Go-based nearby search service that queries OpenStreetMap via the Overpass API, enriches and sorts results, and serves them through a small HTTP API and a static Leaflet frontend.
 
